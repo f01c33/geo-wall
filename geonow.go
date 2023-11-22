@@ -13,7 +13,6 @@ import (
 	"time"
 )
 
-// TODO: separate based in sources
 const (
 	cacheDir       = "geonow-cache" // Folder to store cached images
 	updateInterval = time.Minute * 16
@@ -51,6 +50,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid dimensions", http.StatusBadRequest)
 		return
 	}
+	log.Printf("Client request for %s to %dx%d", srcName, width, height)
 
 	// Download latest image if necessary
 	// TODO: some source's won't be jpg
@@ -58,7 +58,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	needsRefresh := isDownloadRequired(latestImage)
 	if needsRefresh {
 		log.Printf("Downloading latest %s image", srcName)
-		_ = os.Mkdir("geo-cache", 0755)
+		_ = os.Mkdir(cacheDir, 0755)
 		err = downloadLatestImage(src, latestImage)
 		if err != nil {
 			log.Printf("Error downloading %s image: %v", srcName, err)
@@ -116,11 +116,11 @@ func downloadLatestImage(src imagery.ImageSource, dst string) error {
 	}
 	defer f.Close()
 
-	// TODO: log, written x bytes to...
-	_, err = r.WriteTo(bufio.NewWriter(f))
+	b, err := r.WriteTo(bufio.NewWriter(f))
 	if err != nil {
 		return err
 	}
+	log.Printf("%d bytes written to %s", b, dst)
 
 	return nil
 }
