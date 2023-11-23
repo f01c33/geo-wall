@@ -107,6 +107,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: some source's won't be jpg
 	latestImage := imagePath(srcName, "latest.jpg")
 	needsRefresh := isDownloadRequired(latestImage)
+	// TODO: fix this logic, it does not re-resize if last cache is older than refresh date
 	needsResize := isResizeRequired(srcName, dimensions) || needsRefresh || disableThumbCache
 
 	// Expensive operation, rate limit it
