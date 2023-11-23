@@ -2,9 +2,10 @@ package imagery
 
 import (
 	"bufio"
-	"gopkg.in/gographics/imagick.v3/imagick"
+	"github.com/davidbyttow/govips/v2/vips"
 	"log"
 	"net/http"
+	"os"
 )
 
 const (
@@ -27,14 +28,26 @@ func (GoesSource) DownloadImage() (*bufio.Reader, error) {
 
 // PostProcess Crop the top/bottom 16px of the GOES image since they are unnecessary
 func (GoesSource) PostProcess(src string, dst string) error {
-	ret, err := imagick.ConvertImageCommand([]string{
-		"magick", src, "-shave", "0x16", "-resize", "x3840", dst,
-	})
+	img, err := vips.NewImageFromFile(src)
 	if err != nil {
 		return err
 	}
+	err = img.ExtractArea(0, 16, img.Width(), img.Height()-32)
+	if err != nil {
+		return err
+	}
+	ratio := float64(img.Width()) / float64(img.Height())
+	err = img.Thumbnail(3840, int(3840*ratio), vips.InterestingNone)
+	if err != nil {
+		return err
+	}
+	jpeg, metadata, err := img.ExportJpeg(nil)
 
-	log.Printf("Goes post process: %s -> %s, %s", src, dst, ret.Meta)
+	err = os.WriteFile(dst, jpeg, 0660)
+	if err != nil {
+		return err
+	}
+	log.Printf("Goes post process: %s -> %s, %dx%d", src, dst, metadata.Width, metadata.Height)
 
 	return nil
 }
