@@ -20,6 +20,8 @@ const (
 	// Config for the app
 	cacheDir       = "geonow-cache" // Folder to store cached images
 	updateInterval = time.Minute * 16
+	maxWidth       = 3840
+	maxHeight      = 2160
 	// Rate limit for generating new images (expensive)
 	newImageRate  = 0.3
 	newImageBurst = 1
@@ -203,7 +205,6 @@ func downloadLatestImage(src imagery.ImageSource, dst string) error {
 }
 
 func parseDimensions(dimensions string) (int, int, error) {
-	// TODO: invalidate dimensions larger than 4k
 	parts := strings.Split(dimensions, "x")
 	if len(parts) != 2 {
 		return 0, 0, fmt.Errorf("invalid dimensions format")
@@ -216,6 +217,13 @@ func parseDimensions(dimensions string) (int, int, error) {
 	if err != nil {
 		return 0, 0, err
 	}
+	if width < 1 || height < 1 {
+		return 0, 0, fmt.Errorf("invalid dimensions")
+	}
+	if width > maxWidth || height > maxHeight {
+		return 0, 0, fmt.Errorf("max dimension is %dx%d", maxWidth, maxHeight)
+	}
+
 	return width, height, nil
 }
 
