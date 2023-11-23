@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	_ "embed"
 	"fmt"
 	"golang.org/x/time/rate"
 	"gopkg.in/gographics/imagick.v3/imagick"
@@ -47,12 +48,21 @@ func main() {
 	go cleanRateLimits()
 
 	http.HandleFunc("/", imageHandler)
+	http.HandleFunc("/redirector", redirectorHandler)
 	serveAddr := ":8080"
 	log.Printf("Server is running at %s", serveAddr)
 	err := http.ListenAndServe(serveAddr, nil)
 	if err != nil {
 		log.Printf("Failed to serve at %s", serveAddr)
 	}
+}
+
+//go:embed embed/redirector.html
+var redirectorHtml []byte
+
+func redirectorHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "text/html; charset=utf-8")
+	w.Write(redirectorHtml)
 }
 
 func imageHandler(w http.ResponseWriter, r *http.Request) {
