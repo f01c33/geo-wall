@@ -1,0 +1,9 @@
+<html lang="en">
+<!-- Simple redirector to detect device size -->
+<script>
+    var width = screen.width;
+    var height = screen.height;
+    var newLoc = (window.location + '').replace('/redirector', '/goes/' + width + 'x' + height);
+    window.location.replace(newLoc);
+</script>
+</html>
