@@ -173,6 +173,7 @@ func cleanRateLimits() {
 				delete(clients, key)
 			}
 		}
+		rateMutex.Unlock()
 	}
 }
 
