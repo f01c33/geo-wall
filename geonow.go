@@ -20,7 +20,7 @@ import (
 
 const (
 	// Config for the app
-	disableThumbCache = false
+	disableThumbCache = true
 	cacheDir          = "geonow-cache" // Folder to store cached images
 	updateInterval    = time.Minute * 16
 	maxWidth          = 3840
@@ -259,7 +259,9 @@ func resizeImage(srcPath string, width, height int, savePath string) error {
 		dim = width
 		top = (height - width) / 2
 	}
-	err = img.Thumbnail(dim, dim, vips.InterestingCentre)
+	_ = dim
+	// FIXME: this expects a 1:1 image, if not, causes warping
+	err = img.ThumbnailWithSize(dim, dim, vips.InterestingAttention, vips.SizeForce)
 	if err != nil {
 		return err
 	}
@@ -271,6 +273,7 @@ func resizeImage(srcPath string, width, height int, savePath string) error {
 	if err != nil {
 		return err
 	}
+	// TODO: maybe it isn't a good idea to write to a buffer? (memory consumption)
 	jpeg, metadata, err := img.ExportJpeg(nil)
 	if err != nil {
 		return err
