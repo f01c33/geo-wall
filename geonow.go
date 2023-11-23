@@ -4,6 +4,7 @@ import (
 	"bufio"
 	_ "embed"
 	"fmt"
+	"github.com/davidbyttow/govips/v2/vips"
 	"golang.org/x/time/rate"
 	"gopkg.in/gographics/imagick.v3/imagick"
 	"log"
@@ -19,10 +20,11 @@ import (
 
 const (
 	// Config for the app
-	cacheDir       = "geonow-cache" // Folder to store cached images
-	updateInterval = time.Minute * 16
-	maxWidth       = 3840
-	maxHeight      = 2160
+	disableThumbCache = false
+	cacheDir          = "geonow-cache" // Folder to store cached images
+	updateInterval    = time.Minute * 16
+	maxWidth          = 3840
+	maxHeight         = 3840
 	// Rate limit for generating new images (expensive)
 	newImageRate  = 0.3
 	newImageBurst = 1
@@ -45,6 +47,8 @@ var (
 func main() {
 	imagick.Initialize()
 	defer imagick.Terminate()
+	vips.Startup(nil)
+	defer vips.Shutdown()
 	go cleanRateLimits()
 
 	http.HandleFunc("/", imageHandler)
@@ -103,7 +107,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: some source's won't be jpg
 	latestImage := imagePath(srcName, "latest.jpg")
 	needsRefresh := isDownloadRequired(latestImage)
-	needsResize := isResizeRequired(srcName, dimensions) || needsRefresh
+	needsResize := isResizeRequired(srcName, dimensions) || needsRefresh || disableThumbCache
 
 	// Expensive operation, rate limit it
 	if needsRefresh || needsResize {
@@ -238,17 +242,48 @@ func parseDimensions(dimensions string) (int, int, error) {
 	return width, height, nil
 }
 
-func resizeImage(src string, width, height int, cachedImagePath string) error {
+func resizeImage(srcPath string, width, height int, savePath string) error {
 	// convert input.jpg -resize 800x600 -background black -gravity center -extent 800x600 output.jpg
 	wh := fmt.Sprintf("%dx%d", width, height)
 	dst := fmt.Sprintf("%s/%s.jpg", cacheDir, wh)
-	ret, err := imagick.ConvertImageCommand([]string{
-		"convert", src, "-resize", wh, "-background", "black", "-gravity", "center", "-extent", wh, cachedImagePath,
+	img, err := vips.NewImageFromFile(srcPath)
+	if err != nil {
+		return err
+	}
+	// Gravity center resize
+	var dim, left, top int
+	if width > height {
+		dim = height
+		left = (width - height) / 2
+	} else {
+		dim = width
+		top = (height - width) / 2
+	}
+	err = img.Thumbnail(dim, dim, vips.InterestingCentre)
+	if err != nil {
+		return err
+	}
+	err = img.EmbedBackground(left, top, width, height, &vips.Color{
+		R: 0,
+		G: 0,
+		B: 0,
 	})
 	if err != nil {
 		return err
 	}
-	log.Printf("Resize: %s -> %s, %s", src, dst, ret.Meta)
+	jpeg, metadata, err := img.ExportJpeg(nil)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(savePath, jpeg, 0660)
+	if err != nil {
+		return err
+	}
+
+	if err != nil {
+		return err
+	}
+	log.Printf("Resize: %s -> %s, %dx%d", srcPath, dst, metadata.Width, metadata.Height)
 
 	return nil
 }
