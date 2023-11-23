@@ -28,7 +28,7 @@ func (GoesSource) DownloadImage() (*bufio.Reader, error) {
 // PostProcess Crop the top/bottom 16px of the GOES image since they are unnecessary
 func (GoesSource) PostProcess(src string, dst string) error {
 	ret, err := imagick.ConvertImageCommand([]string{
-		"magick", src, "-shave", "0x16", dst,
+		"magick", src, "-shave", "0x16", "-resize", "x2160", dst,
 	})
 	if err != nil {
 		return err
