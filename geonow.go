@@ -103,7 +103,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	// TODO: some source's won't be jpg
 	latestImage := imagePath(srcName, "latest.jpg")
 	needsRefresh := isDownloadRequired(latestImage)
-	needsResize := isResizeRequired(srcName, dimensions)
+	needsResize := isResizeRequired(srcName, dimensions) || needsRefresh
 
 	// Expensive operation, rate limit it
 	if needsRefresh || needsResize {
