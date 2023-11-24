@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	_ "embed"
+	"errors"
 	"fmt"
 	"github.com/davidbyttow/govips/v2/vips"
 	"golang.org/x/time/rate"
@@ -103,9 +104,13 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	// Download latest image if necessary
 	// TODO: some source's won't be jpg
 	latestImage := imagePath(srcName, "latest.jpg")
-	needsRefresh := isDownloadRequired(latestImage)
-	// TODO: fix this logic, it does not re-resize if last cache is older than refresh date
-	needsResize := isResizeRequired(srcName, dimensions) || needsRefresh || disableThumbCache
+	lastRefresh, err := modTime(latestImage)
+	if err != nil {
+		http.Error(w, "Failed to get last refresh", http.StatusInternalServerError)
+		return
+	}
+	needsRefresh := isDownloadRequired(lastRefresh)
+	needsResize := isResizeRequired(lastRefresh, srcName, dimensions) || needsRefresh || disableThumbCache
 
 	// Expensive operation, rate limit it
 	if needsRefresh || needsResize {
@@ -148,6 +153,12 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Resize or use cached image
 	cachedImagePath := imagePath(srcName, dimensions+".jpg")
+	stat, err := os.Stat(cachedImagePath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		http.Error(w, "Failed to stat cached image", http.StatusInternalServerError)
+		return
+	}
+	needsResize = disableThumbCache || needsRefresh || errors.Is(err, os.ErrNotExist) || stat.ModTime().Before(lastRefresh)
 	if needsResize {
 		err := resizeImage(imagePath(srcName, "latest-clean.jpg"), width, height, cachedImagePath)
 		if err != nil {
@@ -158,12 +169,6 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.ServeFile(w, r, cachedImagePath)
-}
-
-func isResizeRequired(src string, dimensions string) bool {
-	cachedImagePath := imagePath(src, dimensions+".jpg")
-	_, err := os.Stat(cachedImagePath)
-	return os.IsNotExist(err)
 }
 
 func cleanRateLimits() {
@@ -184,15 +189,23 @@ func imagePath(src string, name string) string {
 	return cacheDir + "/" + src + "-" + name
 }
 
-func isDownloadRequired(filePath string) bool {
-	// Check if we need to download the latest image
+func modTime(filePath string) (time.Time, error) {
 	stat, err := os.Stat(filePath)
-	// If it exists and is less than 2 hours old
-	// TODO: some sources may need different update intervals
-	if err == nil && stat.ModTime().After(time.Now().Add(-updateInterval)) {
-		return false
+	if err != nil {
+		return time.Time{}, err
 	}
-	return true
+	return stat.ModTime(), nil
+}
+
+// TODO: some sources may need different update intervals
+func isDownloadRequired(t time.Time) bool {
+	return t.Before(time.Now().Add(-updateInterval))
+}
+
+func isResizeRequired(lastRefresh time.Time, src string, dimensions string) bool {
+	cachedImagePath := imagePath(src, dimensions+".jpg")
+	stat, err := os.Stat(cachedImagePath)
+	return os.IsNotExist(err) || stat.ModTime().Before(lastRefresh) || os.IsNotExist(err)
 }
 
 func downloadLatestImage(src imagery.ImageSource, dst string) error {
