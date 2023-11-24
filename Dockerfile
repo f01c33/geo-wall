@@ -1,6 +1,6 @@
 FROM golang:1.21-alpine3.18
 
-RUN apk add imagemagick-dev gcc musl-dev
+RUN apk add vips-dev gcc musl-dev
 
 WORKDIR /build
 

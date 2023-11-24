@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/davidbyttow/govips/v2/vips"
 	"golang.org/x/time/rate"
-	"gopkg.in/gographics/imagick.v3/imagick"
 	"log"
 	"matbm.net/geonow/imagery"
 	"net"
@@ -20,7 +19,7 @@ import (
 
 const (
 	// Config for the app
-	disableThumbCache = true
+	disableThumbCache = false
 	cacheDir          = "geonow-cache" // Folder to store cached images
 	updateInterval    = time.Minute * 16
 	maxWidth          = 3840
@@ -45,8 +44,6 @@ var (
 )
 
 func main() {
-	imagick.Initialize()
-	defer imagick.Terminate()
 	vips.Startup(nil)
 	defer vips.Shutdown()
 	go cleanRateLimits()
