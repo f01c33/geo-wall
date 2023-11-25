@@ -3,9 +3,9 @@ package imagery
 import (
 	"bufio"
 	"github.com/davidbyttow/govips/v2/vips"
+	"io"
 	"log"
 	"net/http"
-	"os"
 )
 
 const (
@@ -29,8 +29,8 @@ func (GoesSource) DownloadImage() (*bufio.Reader, error) {
 }
 
 // PostProcess Crop the top/bottom 16px of the GOES image since they are unnecessary
-func (g GoesSource) PostProcess(src string, dst string) error {
-	img, err := vips.NewImageFromFile(src)
+func (g GoesSource) PostProcess(src io.Reader, dst io.Writer) error {
+	img, err := vips.NewImageFromReader(src)
 	if err != nil {
 		return err
 	}
@@ -45,11 +45,11 @@ func (g GoesSource) PostProcess(src string, dst string) error {
 	}
 	jpeg, metadata, err := img.ExportJpeg(nil)
 
-	err = os.WriteFile(dst, jpeg, 0660)
+	n, err := dst.Write(jpeg)
 	if err != nil {
 		return err
 	}
-	log.Printf("Goes post process: %s -> %s, %dx%d", src, dst, metadata.Width, metadata.Height)
+	log.Printf("Goes post process: %dx%d %d bytes", metadata.Width, metadata.Height, n)
 
 	return nil
 }

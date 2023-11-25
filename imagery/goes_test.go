@@ -3,29 +3,32 @@ package imagery
 import (
 	"bytes"
 	"image/jpeg"
+	"io"
 	"os"
 	"testing"
 )
 
 func TestPostProcess(t *testing.T) {
-	src := "./testdata/goes-east-geocolor.jpg"
-	dest := t.TempDir() + "/dest.jpg"
+	fSrc, err := os.Open("./testdata/goes-east-geocolor.jpg")
+	if err != nil {
+		t.Errorf("Failed to open the source file: %s", err)
+	}
+
+	reader := io.Reader(fSrc)
+	destData := &bytes.Buffer{}
+	writer := io.Writer(destData)
 	maxWidth := 256
 
-	err := GoesSource{
+	err = GoesSource{
 		MaxWidth: maxWidth,
-	}.PostProcess(src, dest)
+	}.PostProcess(reader, writer)
 	if err != nil {
 		t.Errorf("Failed to post process in test: %s", err)
 	}
 
-	file, err := os.ReadFile(dest)
+	img, err := jpeg.Decode(bytes.NewReader(destData.Bytes()))
 	if err != nil {
-		t.Errorf("Failed to read %s: %s", dest, err)
-	}
-	img, err := jpeg.Decode(bytes.NewReader(file))
-	if err != nil {
-		t.Errorf("Failed to decode %s: %s", dest, err)
+		t.Errorf("Failed to decode destination image: %s", err)
 	}
 
 	// Assert that we cut at y (removing metadata)

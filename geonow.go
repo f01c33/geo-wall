@@ -89,7 +89,7 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	srcName := parts[1]
-	src, err := imagery.GetSource(srcName)
+	src, err := imagery.GetSource(srcName, &imagery.Parameters{MaxWidth: maxWidth})
 	if err != nil {
 		http.Error(w, "Invalid source", http.StatusBadRequest)
 		return
@@ -144,7 +144,17 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to download latest image", http.StatusInternalServerError)
 			return
 		}
-		err = src.PostProcess(imagePath(srcName, "latest.jpg"), imagePath(srcName, "latest-clean.jpg"))
+		srcImg, err := os.Open(imagePath(srcName, "latest.jpg"))
+		if err != nil {
+			log.Printf("Failed to open latest image: %s", err)
+			http.Error(w, "Failed to post process image", http.StatusInternalServerError)
+		}
+		dstImg, err := os.Create(imagePath(srcName, "latest-clean.jpg"))
+		if err != nil {
+			log.Printf("Failed to create dst image: %s", err)
+			http.Error(w, "Failed to post process image", http.StatusInternalServerError)
+		}
+		err = src.PostProcess(srcImg, dstImg)
 		if err != nil {
 			log.Printf("Error post processing image: %v", err)
 			http.Error(w, "Failed to post process image", http.StatusInternalServerError)
@@ -193,7 +203,7 @@ func imagePath(src string, name string) string {
 func modTime(filePath string) (time.Time, error) {
 	stat, err := os.Stat(filePath)
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, nil
 	}
 	return stat.ModTime(), nil
 }
