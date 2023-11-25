@@ -9,16 +9,18 @@ import (
 )
 
 const (
-	baseURL     = "https://cdn.star.nesdis.noaa.gov/GOES16/ABI/FD/GEOCOLOR/"
-	latestImage = "latest.jpg" // Name for the latest downloaded image
+	host         = "https://cdn.star.nesdis.noaa.gov"
+	eastGeocolor = "/GOES16/ABI/FD/GEOCOLOR/latest.jpg"
 )
 
-type GoesSource struct{}
+type GoesSource struct {
+	MaxWidth int
+}
 
 // DownloadImage downloads a goes-east, full disk, geo-color, latest image
 func (GoesSource) DownloadImage() (*bufio.Reader, error) {
 	client := http.Client{}
-	resp, err := client.Get(baseURL + latestImage)
+	resp, err := client.Get(host + eastGeocolor)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +29,7 @@ func (GoesSource) DownloadImage() (*bufio.Reader, error) {
 }
 
 // PostProcess Crop the top/bottom 16px of the GOES image since they are unnecessary
-func (GoesSource) PostProcess(src string, dst string) error {
+func (g GoesSource) PostProcess(src string, dst string) error {
 	img, err := vips.NewImageFromFile(src)
 	if err != nil {
 		return err
@@ -37,7 +39,7 @@ func (GoesSource) PostProcess(src string, dst string) error {
 		return err
 	}
 	ratio := float64(img.Width()) / float64(img.Height())
-	err = img.Thumbnail(3840, int(3840*ratio), vips.InterestingNone)
+	err = img.Thumbnail(g.MaxWidth, int(float64(g.MaxWidth)*ratio), vips.InterestingNone)
 	if err != nil {
 		return err
 	}

@@ -18,6 +18,7 @@ import (
 	"time"
 )
 
+// TODO move this to a toml config file
 const (
 	// Config for the app
 	disableThumbCache = false
