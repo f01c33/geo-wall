@@ -6,15 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/davidbyttow/govips/v2/vips"
-	"golang.org/x/time/rate"
 	"log"
 	"matbm.net/geonow/imagery"
-	"net"
+	"matbm.net/geonow/ratelimit"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -26,29 +24,12 @@ const (
 	updateInterval    = time.Minute * 16
 	maxWidth          = 3840
 	maxHeight         = 3840
-	// Rate limit for generating new images (expensive)
-	newImageRate  = 0.3
-	newImageBurst = 1
-	// Rate limit to download cached images (cheap)
-	cacheImageRate  = 3
-	cacheImageBurst = 3
-)
-
-type client struct {
-	expensiveLimiter *rate.Limiter
-	cheapLimiter     *rate.Limiter
-	lastSeen         time.Time
-}
-
-var (
-	rateMutex sync.Mutex
-	clients   = make(map[string]*client)
 )
 
 func main() {
 	vips.Startup(nil)
 	defer vips.Shutdown()
-	go cleanRateLimits()
+	go ratelimit.CleanRateLimits()
 
 	http.HandleFunc("/", imageHandler)
 	http.HandleFunc("/redirector", redirectorHandler)
@@ -69,18 +50,11 @@ func redirectorHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func imageHandler(w http.ResponseWriter, r *http.Request) {
-	// Extract the IP address from the request.
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	cli, err := ratelimit.GetClient(r)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		log.Printf("Failed to get rate limit client: %s", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
-	rateMutex.Lock()
-	if _, found := clients[ip]; !found {
-		clients[ip] = &client{expensiveLimiter: rate.NewLimiter(newImageRate, newImageBurst), cheapLimiter: rate.NewLimiter(cacheImageRate, cacheImageBurst)}
-	}
-	clients[ip].lastSeen = time.Now()
-	rateMutex.Unlock()
 
 	// Parse client request
 	parts := strings.Split(r.URL.Path, "/")
@@ -114,25 +88,13 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	needsResize := isResizeRequired(lastRefresh, srcName, dimensions) || needsRefresh || disableThumbCache
 
 	// Expensive operation, rate limit it
-	if needsRefresh || needsResize {
-		rateMutex.Lock()
-		if !clients[ip].expensiveLimiter.Allow() {
-			rateMutex.Unlock()
-
-			http.Error(w, "Too many requests", http.StatusTooManyRequests)
-			return
-		}
-		rateMutex.Unlock()
-	} else {
+	if (needsRefresh || needsResize) && !cli.AllowsExpensive() {
+		http.Error(w, "Too many requests", http.StatusTooManyRequests)
+		return
 		// Cheap operation (img serve) shouldn't be too strict
-		rateMutex.Lock()
-		if !clients[ip].cheapLimiter.Allow() {
-			rateMutex.Unlock()
-
-			http.Error(w, "Too many requests", http.StatusTooManyRequests)
-			return
-		}
-		rateMutex.Unlock()
+	} else if !cli.AllowsCheap() {
+		http.Error(w, "Too many requests", http.StatusTooManyRequests)
+		return
 	}
 
 	if needsRefresh {
@@ -180,19 +142,6 @@ func imageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.ServeFile(w, r, cachedImagePath)
-}
-
-func cleanRateLimits() {
-	for {
-		time.Sleep(time.Minute)
-		rateMutex.Lock()
-		for key, client := range clients {
-			if time.Since(client.lastSeen) > time.Minute*3 {
-				delete(clients, key)
-			}
-		}
-		rateMutex.Unlock()
-	}
 }
 
 // imagePath returns the cached image path based in a source
