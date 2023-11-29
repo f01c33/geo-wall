@@ -183,6 +183,11 @@ func TestDecode(t *testing.T) {
 			Errors:         make([]ErrorInformation, 0),
 			Spare:          [40]C{},
 		},
+		SpareInfo: SpareInformationBlock{
+			BlockNumber: 11,
+			BlockLength: 259,
+			Spare:       [256]C{},
+		},
 	}, hw)
 	if diff != "" {
 		t.Errorf("received and expected not equal: %s", diff)
