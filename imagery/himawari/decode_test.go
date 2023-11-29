@@ -88,6 +88,25 @@ func TestDecode(t *testing.T) {
 			},
 			Spare: [40]C{},
 		},
+		CalibrationInfo: CalibrationInformationBlock{
+			BlockNumber:                       5,
+			BlockLength:                       147,
+			BandNumber:                        2,
+			CentralWaveLength:                 0.509930,
+			ValidNumberOfBitsPerPixel:         11,
+			CountValueOfErrorPixels:           65535,
+			CountValueOfPixelsOutsideScanArea: 65534,
+			SlopeForCountRadianceEq:           0.35414147058823525,
+			InterceptForCountRadianceEq:       -7.082829411764705,
+			Infrared:                          InfraredBand{},
+			Visible: VisibleBand{
+				Albedo:              0.00166101782189072,
+				UpdateTime:          57822.000000,
+				CalibratedSlope:     0.354141470588,
+				CalibratedIntercept: -7.082829411765,
+				Spare:               [80]C{},
+			},
+		},
 	}, hw)
 	if diff != "" {
 		t.Errorf("received and expected not equal: %s", diff)

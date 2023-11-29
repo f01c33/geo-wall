@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
 	"os"
 )
 
@@ -21,10 +20,11 @@ const (
 )
 
 type HMFile struct {
-	BasicInfo      BasicInformation
-	DataInfo       DataInformationBlock
-	ProjectionInfo ProjectionInformationBlock
-	NavigationInfo NavigationInformationBlock
+	BasicInfo       BasicInformation
+	DataInfo        DataInformationBlock
+	ProjectionInfo  ProjectionInformationBlock
+	NavigationInfo  NavigationInformationBlock
+	CalibrationInfo CalibrationInformationBlock
 }
 
 type Position struct {
@@ -99,6 +99,41 @@ type NavigationInformationBlock struct {
 	SunPosition                  Position
 	MoonPosition                 Position
 	Spare                        [40]C
+}
+
+type CalibrationInformationBlock struct {
+	BlockNumber                       I1
+	BlockLength                       I2
+	BandNumber                        I2
+	CentralWaveLength                 R8
+	ValidNumberOfBitsPerPixel         I2
+	CountValueOfErrorPixels           I2
+	CountValueOfPixelsOutsideScanArea I2
+	SlopeForCountRadianceEq           R8
+	InterceptForCountRadianceEq       R8
+	Infrared                          InfraredBand
+	Visible                           VisibleBand
+}
+
+type InfraredBand struct {
+	BrightnessTemp    R8
+	BrightnessC1      R8
+	BrightnessC2      R8
+	Radiance          R8
+	RadianceC1        R8
+	RadianceC2        R8
+	SpeedOfLight      R8
+	PlanckConstant    R8
+	BoltzmannConstant R8
+	Spare             [40]C
+}
+
+type VisibleBand struct {
+	Albedo              R8
+	UpdateTime          R8
+	CalibratedSlope     R8
+	CalibratedIntercept R8
+	Spare               [80]C
 }
 
 // TODO: use only io.Reader without seek
@@ -191,7 +226,28 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	read(f, o, &n.MoonPosition.Z)
 	read(f, o, &n.Spare)
 
-	return &HMFile{BasicInfo: i, DataInfo: d, ProjectionInfo: p, NavigationInfo: n}, nil
+	// Decode calibration info block
+	c := CalibrationInformationBlock{}
+	read(f, o, &c.BlockNumber)
+	read(f, o, &c.BlockLength)
+	read(f, o, &c.BandNumber)
+	read(f, o, &c.CentralWaveLength)
+	read(f, o, &c.ValidNumberOfBitsPerPixel)
+	read(f, o, &c.CountValueOfErrorPixels)
+	read(f, o, &c.CountValueOfPixelsOutsideScanArea)
+	read(f, o, &c.SlopeForCountRadianceEq)
+	read(f, o, &c.InterceptForCountRadianceEq)
+	// Visible light
+	if c.BandNumber < 7 {
+		read(f, o, &c.Visible.Albedo)
+		read(f, o, &c.Visible.UpdateTime)
+		read(f, o, &c.Visible.CalibratedSlope)
+		read(f, o, &c.Visible.CalibratedIntercept)
+		read(f, o, &c.Visible.Spare)
+	}
+	// TODO: infrared
+
+	return &HMFile{BasicInfo: i, DataInfo: d, ProjectionInfo: p, NavigationInfo: n, CalibrationInfo: c}, nil
 }
 
 func main() {
@@ -210,12 +266,4 @@ func main() {
 // read util function that reads and ignore error
 func read(f io.Reader, o binary.ByteOrder, dst any) {
 	_ = binary.Read(f, o, dst)
-}
-
-func round(num float64) int {
-	return int(num + math.Copysign(0.5, num))
-}
-func toFixed(num float64, precision int) float64 {
-	output := math.Pow(10, float64(precision))
-	return float64(round(num*output)) / output
 }
