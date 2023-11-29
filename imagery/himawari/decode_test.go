@@ -152,6 +152,30 @@ func TestDecode(t *testing.T) {
 			},
 			Spare: [40]C{},
 		},
+		ObservationTimeInfo: ObservationTimeInformationBlock{
+			BlockNumber:              9,
+			BlockLength:              85,
+			NumberOfObservationTimes: 4,
+			Observations: []ObservationTime{
+				{
+					LineNumber:      1,
+					ObservationTime: 60248.56968491159,
+				},
+				{
+					LineNumber:      383,
+					ObservationTime: 60248.56988264495,
+				},
+				{
+					LineNumber:      875,
+					ObservationTime: 60248.57007103656,
+				},
+				{
+					LineNumber:      1100,
+					ObservationTime: 60248.57007103656,
+				},
+			},
+			Spare: [40]C{},
+		},
 	}, hw)
 	if diff != "" {
 		t.Errorf("received and expected not equal: %s", diff)

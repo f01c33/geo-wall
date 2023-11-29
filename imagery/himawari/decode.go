@@ -28,6 +28,7 @@ type HMFile struct {
 	InterCalibrationInfo     InterCalibrationInformationBlock
 	SegmentInfo              SegmentInformationBlock
 	NavigationCorrectionInfo NavigationCorrectionInformationBlock
+	ObservationTimeInfo      ObservationTimeInformationBlock
 }
 
 type Position struct {
@@ -182,6 +183,19 @@ type NavigationCorrection struct {
 	ShiftAmountForLineCorrection   R4
 }
 
+type ObservationTimeInformationBlock struct {
+	BlockNumber              I1
+	BlockLength              I2
+	NumberOfObservationTimes I2
+	Observations             []ObservationTime
+	Spare                    [40]C
+}
+
+type ObservationTime struct {
+	LineNumber      I2
+	ObservationTime R8
+}
+
 // TODO: use only io.Reader without seek
 func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	// Decode basic info
@@ -321,6 +335,7 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	read(f, o, &s.FirstLineNumberOfImageSegment)
 	read(f, o, &s.Spare)
 
+	// Decode navigation correction block
 	nc := NavigationCorrectionInformationBlock{}
 	read(f, o, &nc.BlockNumber)
 	read(f, o, &nc.BlockLength)
@@ -328,7 +343,7 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	read(f, o, &nc.CenterLineOfRotation)
 	read(f, o, &nc.AmountOfRotationalCorrection)
 	read(f, o, &nc.NumberOfCorrectionInfo)
-	nc.Corrections = make([]NavigationCorrection, nc.NumberOfCorrectionInfo, nc.NumberOfCorrectionInfo)
+	nc.Corrections = make([]NavigationCorrection, nc.NumberOfCorrectionInfo)
 	for i := I2(0); i < nc.NumberOfCorrectionInfo; i++ {
 		correct := NavigationCorrection{}
 		read(f, o, &correct.LineNumberAfterRotation)
@@ -336,8 +351,21 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 		read(f, o, &correct.ShiftAmountForLineCorrection)
 		nc.Corrections[i] = correct
 	}
-
 	read(f, o, &nc.Spare)
+
+	// Decode observation time block
+	ob := ObservationTimeInformationBlock{}
+	read(f, o, &ob.BlockNumber)
+	read(f, o, &ob.BlockLength)
+	read(f, o, &ob.NumberOfObservationTimes)
+	ob.Observations = make([]ObservationTime, ob.NumberOfObservationTimes)
+	for i := I2(0); i < ob.NumberOfObservationTimes; i++ {
+		observation := ObservationTime{}
+		read(f, o, &observation.LineNumber)
+		read(f, o, &observation.ObservationTime)
+		ob.Observations[i] = observation
+	}
+	read(f, o, &ob.Spare)
 
 	return &HMFile{
 		BasicInfo:                i,
@@ -348,6 +376,7 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 		InterCalibrationInfo:     ci,
 		SegmentInfo:              s,
 		NavigationCorrectionInfo: nc,
+		ObservationTimeInfo:      ob,
 	}, nil
 }
 
