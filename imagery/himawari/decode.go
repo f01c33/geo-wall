@@ -20,11 +20,12 @@ const (
 )
 
 type HMFile struct {
-	BasicInfo       BasicInformation
-	DataInfo        DataInformationBlock
-	ProjectionInfo  ProjectionInformationBlock
-	NavigationInfo  NavigationInformationBlock
-	CalibrationInfo CalibrationInformationBlock
+	BasicInfo            BasicInformation
+	DataInfo             DataInformationBlock
+	ProjectionInfo       ProjectionInformationBlock
+	NavigationInfo       NavigationInformationBlock
+	CalibrationInfo      CalibrationInformationBlock
+	InterCalibrationInfo InterCalibrationInformationBlock
 }
 
 type Position struct {
@@ -136,6 +137,23 @@ type VisibleBand struct {
 	Spare               [80]C
 }
 
+type InterCalibrationInformationBlock struct {
+	BlockNumber                I1
+	BlockLength                I2
+	GSICSIntercept             R8
+	GSICSSlope                 R8
+	GSICSQuadratic             R8
+	RadianceBias               R8
+	RadianceUncertainty        R8
+	RadianceStandardScene      R8
+	GSICSCorrectionStart       R8
+	GSICSCorrectionEnd         R8
+	GSICSCalibrationUpperLimit R4
+	GSICSCalibrationLowerLimit R4
+	GSICSFileName              [128]C
+	Spare                      [56]C
+}
+
 // TODO: use only io.Reader without seek
 func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	// Decode basic info
@@ -244,10 +262,36 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 		read(f, o, &c.Visible.CalibratedSlope)
 		read(f, o, &c.Visible.CalibratedIntercept)
 		read(f, o, &c.Visible.Spare)
+	} else {
+		// TODO: infrared
+		read(f, o, make([]byte, c.BlockLength))
 	}
-	// TODO: infrared
 
-	return &HMFile{BasicInfo: i, DataInfo: d, ProjectionInfo: p, NavigationInfo: n, CalibrationInfo: c}, nil
+	// Decode inter calibration info block
+	ci := InterCalibrationInformationBlock{}
+	read(f, o, &ci.BlockNumber)
+	read(f, o, &ci.BlockLength)
+	read(f, o, &ci.GSICSIntercept)
+	read(f, o, &ci.GSICSSlope)
+	read(f, o, &ci.GSICSQuadratic)
+	read(f, o, &ci.RadianceBias)
+	read(f, o, &ci.RadianceUncertainty)
+	read(f, o, &ci.RadianceStandardScene)
+	read(f, o, &ci.GSICSCorrectionStart)
+	read(f, o, &ci.GSICSCorrectionEnd)
+	read(f, o, &ci.GSICSCalibrationUpperLimit)
+	read(f, o, &ci.GSICSCalibrationLowerLimit)
+	read(f, o, &ci.GSICSFileName)
+	read(f, o, &ci.Spare)
+
+	return &HMFile{
+		BasicInfo:            i,
+		DataInfo:             d,
+		ProjectionInfo:       p,
+		NavigationInfo:       n,
+		CalibrationInfo:      c,
+		InterCalibrationInfo: ci,
+	}, nil
 }
 
 func main() {

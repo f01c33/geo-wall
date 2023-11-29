@@ -107,6 +107,22 @@ func TestDecode(t *testing.T) {
 				Spare:               [80]C{},
 			},
 		},
+		InterCalibrationInfo: InterCalibrationInformationBlock{
+			BlockNumber:                6,
+			BlockLength:                259,
+			GSICSIntercept:             -10000000000.000000,
+			GSICSSlope:                 -10000000000.000000,
+			GSICSQuadratic:             -10000000000.000000,
+			RadianceBias:               -10000000000.000000,
+			RadianceUncertainty:        -10000000000.000000,
+			RadianceStandardScene:      -10000000000.000000,
+			GSICSCorrectionStart:       -10000000000.000000,
+			GSICSCorrectionEnd:         -10000000000.000000,
+			GSICSCalibrationUpperLimit: -10000000000.000000,
+			GSICSCalibrationLowerLimit: -10000000000.000000,
+			GSICSFileName:              [128]C{},
+			Spare:                      [56]C{},
+		},
 	}, hw)
 	if diff != "" {
 		t.Errorf("received and expected not equal: %s", diff)
