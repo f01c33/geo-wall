@@ -31,6 +31,7 @@ type HMFile struct {
 	ObservationTimeInfo      ObservationTimeInformationBlock
 	ErrorInfo                ErrorInformationBlock
 	SpareInfo                SpareInformationBlock
+	ImageData                []I2
 }
 
 type Position struct {
@@ -230,10 +231,8 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	var o binary.ByteOrder
 	fmt.Println(i.ByteOrder)
 	if i.ByteOrder == LittleEndian {
-		fmt.Println("little")
 		o = binary.LittleEndian
 	} else {
-		fmt.Println("big")
 		o = binary.BigEndian
 	}
 	_, _ = f.Seek(0, 0)
@@ -326,8 +325,8 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 		read(f, o, &c.Visible.CalibratedIntercept)
 		read(f, o, &c.Visible.Spare)
 	} else {
-		// TODO: infrared
-		read(f, o, make([]byte, c.BlockLength))
+		// TODO: infrared, 112 means what is the end of the block
+		read(f, o, make([]byte, 112))
 	}
 
 	// Decode inter calibration info block
@@ -408,7 +407,8 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	read(f, o, &sp.BlockLength)
 	read(f, o, &sp.Spare)
 
-	return &HMFile{
+	// Decode data
+	h := &HMFile{
 		BasicInfo:                i,
 		DataInfo:                 d,
 		ProjectionInfo:           p,
@@ -420,7 +420,12 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 		ObservationTimeInfo:      ob,
 		ErrorInfo:                ei,
 		SpareInfo:                sp,
-	}, nil
+	}
+
+	h.ImageData = make([]I2, h.DataInfo.NumberOfColumns*h.DataInfo.NumberOfLines)
+	read(f, o, &h.ImageData)
+
+	return h, nil
 }
 
 func main() {

@@ -188,9 +188,18 @@ func TestDecode(t *testing.T) {
 			BlockLength: 259,
 			Spare:       [256]C{},
 		},
-	}, hw)
+	},
+		hw,
+		cmp.FilterPath(func(p cmp.Path) bool { return p.Last().String() == ".ImageData" }, cmp.Ignore()),
+	)
 	if diff != "" {
 		t.Errorf("received and expected not equal: %s", diff)
+	}
+	if len(hw.ImageData) != int(hw.DataInfo.NumberOfLines*hw.DataInfo.NumberOfColumns) {
+		t.Errorf("invalid image length")
+	}
+	if hw.ImageData[len(hw.ImageData)-1] == 0 {
+		t.Errorf("image appears to be wrong")
 	}
 }
 
