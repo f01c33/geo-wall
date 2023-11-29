@@ -29,6 +29,7 @@ type HMFile struct {
 	SegmentInfo              SegmentInformationBlock
 	NavigationCorrectionInfo NavigationCorrectionInformationBlock
 	ObservationTimeInfo      ObservationTimeInformationBlock
+	ErrorInfo                ErrorInformationBlock
 }
 
 type Position struct {
@@ -194,6 +195,19 @@ type ObservationTimeInformationBlock struct {
 type ObservationTime struct {
 	LineNumber      I2
 	ObservationTime R8
+}
+
+type ErrorInformationBlock struct {
+	BlockNumber    I1
+	BlockLength    I4
+	NumberOfErrors I2
+	Errors         []ErrorInformation
+	Spare          [40]C
+}
+
+type ErrorInformation struct {
+	LineNumber     I2
+	NumberOfPixels I2
 }
 
 // TODO: use only io.Reader without seek
@@ -367,6 +381,20 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	}
 	read(f, o, &ob.Spare)
 
+	// Decode error information block
+	ei := ErrorInformationBlock{}
+	read(f, o, &ei.BlockNumber)
+	read(f, o, &ei.BlockLength)
+	read(f, o, &ei.NumberOfErrors)
+	ei.Errors = make([]ErrorInformation, ei.NumberOfErrors)
+	for i := I2(0); i < ei.NumberOfErrors; i++ {
+		errorInfo := ErrorInformation{}
+		read(f, o, &errorInfo.LineNumber)
+		read(f, o, &errorInfo.NumberOfPixels)
+		ei.Errors[i] = errorInfo
+	}
+	read(f, o, &ei.Spare)
+
 	return &HMFile{
 		BasicInfo:                i,
 		DataInfo:                 d,
@@ -377,6 +405,7 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 		SegmentInfo:              s,
 		NavigationCorrectionInfo: nc,
 		ObservationTimeInfo:      ob,
+		ErrorInfo:                ei,
 	}, nil
 }
 
