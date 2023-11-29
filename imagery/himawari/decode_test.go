@@ -49,6 +49,24 @@ func TestDecode(t *testing.T) {
 			CompressionFlag:      0,
 			Spare:                [40]C{},
 		},
+		ProjectionInfo: ProjectionInformationBlock{
+			BlockNumber:             3,
+			BlockLength:             127,
+			SubLon:                  140.7,
+			CFAC:                    40932549,
+			LFAC:                    40932549,
+			COFF:                    5500.5,
+			LOFF:                    5500.5,
+			DistanceFromEarthCenter: 42164,
+			EarthEquatorialRadius:   6378.137,
+			EarthPolarRadius:        6356.7523,
+			RatioDiff:               0.0066943844,
+			RatioPolar:              0.993305616,
+			RatioEquatorial:         1.006739501,
+			SDCoefficient:           1737122264,
+			ResamplingSize:          4,
+			Spare:                   [40]C{},
+		},
 	}, hw)
 	if diff != "" {
 		t.Errorf("received and expected not equal: %s", diff)

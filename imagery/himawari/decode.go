@@ -20,8 +20,9 @@ const (
 )
 
 type HMFile struct {
-	BasicInfo BasicInformation
-	DataInfo  DataInformationBlock
+	BasicInfo      BasicInformation
+	DataInfo       DataInformationBlock
+	ProjectionInfo ProjectionInformationBlock
 }
 
 type BasicInformation struct {
@@ -56,6 +57,26 @@ type DataInformationBlock struct {
 	NumberOfLines        I2
 	CompressionFlag      I1
 	Spare                [40]C
+}
+
+type ProjectionInformationBlock struct {
+	BlockNumber             I1
+	BlockLength             I2
+	SubLon                  R8
+	CFAC                    I4
+	LFAC                    I4
+	COFF                    R4
+	LOFF                    R4
+	DistanceFromEarthCenter R8
+	EarthEquatorialRadius   R8
+	EarthPolarRadius        R8
+	RatioDiff               R8
+	RatioPolar              R8
+	RatioEquatorial         R8
+	SDCoefficient           R8
+	ResamplingTypes         I2
+	ResamplingSize          I2
+	Spare                   [40]C
 }
 
 // TODO: use only io.Reader without seek
@@ -110,7 +131,27 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	read(f, o, &d.CompressionFlag)
 	read(f, o, &d.Spare)
 
-	return &HMFile{BasicInfo: i, DataInfo: d}, nil
+	// Decode projection information block
+	p := ProjectionInformationBlock{}
+	read(f, o, &p.BlockNumber)
+	read(f, o, &p.BlockLength)
+	read(f, o, &p.SubLon)
+	read(f, o, &p.CFAC)
+	read(f, o, &p.LFAC)
+	read(f, o, &p.COFF)
+	read(f, o, &p.LOFF)
+	read(f, o, &p.DistanceFromEarthCenter)
+	read(f, o, &p.EarthEquatorialRadius)
+	read(f, o, &p.EarthPolarRadius)
+	read(f, o, &p.RatioDiff)
+	read(f, o, &p.RatioPolar)
+	read(f, o, &p.RatioEquatorial)
+	read(f, o, &p.SDCoefficient)
+	read(f, o, &p.ResamplingTypes)
+	read(f, o, &p.ResamplingSize)
+	read(f, o, &d.Spare)
+
+	return &HMFile{BasicInfo: i, DataInfo: d, ProjectionInfo: p}, nil
 }
 
 func main() {
