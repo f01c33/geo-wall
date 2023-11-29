@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -19,17 +20,13 @@ const (
 )
 
 type HMFile struct {
-	basicInfo BasicInformation
-	dataInfo  DataInformationBlock
-}
-
-type Header struct {
-	BlockNumber I1
-	BlockLength I2
+	BasicInfo BasicInformation
+	DataInfo  DataInformationBlock
 }
 
 type BasicInformation struct {
-	Header
+	BlockNumber          I1
+	BlockLength          I2
 	TotalHeaderBlocks    I2
 	ByteOrder            I1
 	Satellite            [16]C
@@ -52,7 +49,8 @@ type BasicInformation struct {
 }
 
 type DataInformationBlock struct {
-	Header
+	BlockNumber          I1
+	BlockLength          I2
 	NumberOfBitsPerPixel I2
 	NumberOfColumns      I2
 	NumberOfLines        I2
@@ -60,17 +58,13 @@ type DataInformationBlock struct {
 	Spare                [40]C
 }
 
-func main() {
-	f, err := os.Open("sample-data/HS_H09_20231031_1340_B02_FLDK_R10_S0110.DAT")
-	if err != nil {
-		panic(err)
-	}
-
+// TODO: use only io.Reader without seek
+func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	// Decode basic info
 	// Detect byte order. I1+I2+I2=5
-	_, err = f.Seek(5, 0)
+	_, err := f.Seek(5, 0)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	i := BasicInformation{}
 	read(f, binary.BigEndian, &i.ByteOrder)
@@ -116,12 +110,23 @@ func main() {
 	read(f, o, &d.CompressionFlag)
 	read(f, o, &d.Spare)
 
-	h := HMFile{basicInfo: i, dataInfo: d}
+	return &HMFile{BasicInfo: i, DataInfo: d}, nil
+}
+
+func main() {
+	f, err := os.Open("sample-data/HS_H09_20231031_1340_B02_FLDK_R10_S0110.DAT")
+	if err != nil {
+		panic(err)
+	}
+	h, err := DecodeFile(f)
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Printf("%+v\n", h)
 }
 
 // read util function that reads and ignore error
-func read(f *os.File, o binary.ByteOrder, dst any) {
+func read(f io.Reader, o binary.ByteOrder, dst any) {
 	_ = binary.Read(f, o, dst)
 }
