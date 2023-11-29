@@ -20,13 +20,14 @@ const (
 )
 
 type HMFile struct {
-	BasicInfo            BasicInformation
-	DataInfo             DataInformationBlock
-	ProjectionInfo       ProjectionInformationBlock
-	NavigationInfo       NavigationInformationBlock
-	CalibrationInfo      CalibrationInformationBlock
-	InterCalibrationInfo InterCalibrationInformationBlock
-	SegmentInfo          SegmentInformationBlock
+	BasicInfo                BasicInformation
+	DataInfo                 DataInformationBlock
+	ProjectionInfo           ProjectionInformationBlock
+	NavigationInfo           NavigationInformationBlock
+	CalibrationInfo          CalibrationInformationBlock
+	InterCalibrationInfo     InterCalibrationInformationBlock
+	SegmentInfo              SegmentInformationBlock
+	NavigationCorrectionInfo NavigationCorrectionInformationBlock
 }
 
 type Position struct {
@@ -162,6 +163,23 @@ type SegmentInformationBlock struct {
 	SegmentSequenceNumber         I1
 	FirstLineNumberOfImageSegment I2
 	Spare                         [40]C
+}
+
+type NavigationCorrectionInformationBlock struct {
+	BlockNumber                  I1
+	BlockLength                  I2
+	CenterColumnOfRotation       R4
+	CenterLineOfRotation         R4
+	AmountOfRotationalCorrection R8
+	NumberOfCorrectionInfo       I2
+	Corrections                  []NavigationCorrection
+	Spare                        [40]C
+}
+
+type NavigationCorrection struct {
+	LineNumberAfterRotation        I2
+	ShiftAmountForColumnCorrection R4
+	ShiftAmountForLineCorrection   R4
 }
 
 // TODO: use only io.Reader without seek
@@ -303,14 +321,33 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	read(f, o, &s.FirstLineNumberOfImageSegment)
 	read(f, o, &s.Spare)
 
+	nc := NavigationCorrectionInformationBlock{}
+	read(f, o, &nc.BlockNumber)
+	read(f, o, &nc.BlockLength)
+	read(f, o, &nc.CenterColumnOfRotation)
+	read(f, o, &nc.CenterLineOfRotation)
+	read(f, o, &nc.AmountOfRotationalCorrection)
+	read(f, o, &nc.NumberOfCorrectionInfo)
+	nc.Corrections = make([]NavigationCorrection, nc.NumberOfCorrectionInfo, nc.NumberOfCorrectionInfo)
+	for i := I2(0); i < nc.NumberOfCorrectionInfo; i++ {
+		correct := NavigationCorrection{}
+		read(f, o, &correct.LineNumberAfterRotation)
+		read(f, o, &correct.ShiftAmountForColumnCorrection)
+		read(f, o, &correct.ShiftAmountForLineCorrection)
+		nc.Corrections[i] = correct
+	}
+
+	read(f, o, &nc.Spare)
+
 	return &HMFile{
-		BasicInfo:            i,
-		DataInfo:             d,
-		ProjectionInfo:       p,
-		NavigationInfo:       n,
-		CalibrationInfo:      c,
-		InterCalibrationInfo: ci,
-		SegmentInfo:          s,
+		BasicInfo:                i,
+		DataInfo:                 d,
+		ProjectionInfo:           p,
+		NavigationInfo:           n,
+		CalibrationInfo:          c,
+		InterCalibrationInfo:     ci,
+		SegmentInfo:              s,
+		NavigationCorrectionInfo: nc,
 	}, nil
 }
 

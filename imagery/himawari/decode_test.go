@@ -131,6 +131,27 @@ func TestDecode(t *testing.T) {
 			FirstLineNumberOfImageSegment: 1,
 			Spare:                         [40]C{},
 		},
+		NavigationCorrectionInfo: NavigationCorrectionInformationBlock{
+			BlockNumber:                  8,
+			BlockLength:                  81,
+			CenterColumnOfRotation:       1,
+			CenterLineOfRotation:         1,
+			AmountOfRotationalCorrection: 0,
+			NumberOfCorrectionInfo:       2,
+			Corrections: []NavigationCorrection{
+				{
+					LineNumberAfterRotation:        1,
+					ShiftAmountForColumnCorrection: 0,
+					ShiftAmountForLineCorrection:   0,
+				},
+				{
+					LineNumberAfterRotation:        1100,
+					ShiftAmountForColumnCorrection: 0,
+					ShiftAmountForLineCorrection:   0,
+				},
+			},
+			Spare: [40]C{},
+		},
 	}, hw)
 	if diff != "" {
 		t.Errorf("received and expected not equal: %s", diff)
