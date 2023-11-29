@@ -26,6 +26,7 @@ type HMFile struct {
 	NavigationInfo       NavigationInformationBlock
 	CalibrationInfo      CalibrationInformationBlock
 	InterCalibrationInfo InterCalibrationInformationBlock
+	SegmentInfo          SegmentInformationBlock
 }
 
 type Position struct {
@@ -152,6 +153,15 @@ type InterCalibrationInformationBlock struct {
 	GSICSCalibrationLowerLimit R4
 	GSICSFileName              [128]C
 	Spare                      [56]C
+}
+
+type SegmentInformationBlock struct {
+	BlockNumber                   I1
+	BlockLength                   I2
+	SegmentTotalNumber            I1
+	SegmentSequenceNumber         I1
+	FirstLineNumberOfImageSegment I2
+	Spare                         [40]C
 }
 
 // TODO: use only io.Reader without seek
@@ -284,6 +294,15 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	read(f, o, &ci.GSICSFileName)
 	read(f, o, &ci.Spare)
 
+	// Decode segment info block
+	s := SegmentInformationBlock{}
+	read(f, o, &s.BlockNumber)
+	read(f, o, &s.BlockLength)
+	read(f, o, &s.SegmentTotalNumber)
+	read(f, o, &s.SegmentSequenceNumber)
+	read(f, o, &s.FirstLineNumberOfImageSegment)
+	read(f, o, &s.Spare)
+
 	return &HMFile{
 		BasicInfo:            i,
 		DataInfo:             d,
@@ -291,6 +310,7 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 		NavigationInfo:       n,
 		CalibrationInfo:      c,
 		InterCalibrationInfo: ci,
+		SegmentInfo:          s,
 	}, nil
 }
 

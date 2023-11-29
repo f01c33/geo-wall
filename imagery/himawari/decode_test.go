@@ -123,6 +123,14 @@ func TestDecode(t *testing.T) {
 			GSICSFileName:              [128]C{},
 			Spare:                      [56]C{},
 		},
+		SegmentInfo: SegmentInformationBlock{
+			BlockNumber:                   7,
+			BlockLength:                   47,
+			SegmentTotalNumber:            10,
+			SegmentSequenceNumber:         1,
+			FirstLineNumberOfImageSegment: 1,
+			Spare:                         [40]C{},
+		},
 	}, hw)
 	if diff != "" {
 		t.Errorf("received and expected not equal: %s", diff)
