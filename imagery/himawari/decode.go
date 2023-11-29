@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os"
 )
 
@@ -23,6 +24,13 @@ type HMFile struct {
 	BasicInfo      BasicInformation
 	DataInfo       DataInformationBlock
 	ProjectionInfo ProjectionInformationBlock
+	NavigationInfo NavigationInformationBlock
+}
+
+type Position struct {
+	X R8
+	Y R8
+	Z R8
 }
 
 type BasicInformation struct {
@@ -77,6 +85,20 @@ type ProjectionInformationBlock struct {
 	ResamplingTypes         I2
 	ResamplingSize          I2
 	Spare                   [40]C
+}
+
+type NavigationInformationBlock struct {
+	BlockNumber                  I1
+	BlockLength                  I2
+	NavigationTime               R8
+	SSPLongitude                 R8
+	SSPLatitude                  R8
+	DistanceFromEarthToSatellite R8
+	NadirLongitude               R8
+	NadirLatitude                R8
+	SunPosition                  Position
+	MoonPosition                 Position
+	Spare                        [40]C
 }
 
 // TODO: use only io.Reader without seek
@@ -151,7 +173,25 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	read(f, o, &p.ResamplingSize)
 	read(f, o, &d.Spare)
 
-	return &HMFile{BasicInfo: i, DataInfo: d, ProjectionInfo: p}, nil
+	// Decode navigation information block
+	n := NavigationInformationBlock{}
+	read(f, o, &n.BlockNumber)
+	read(f, o, &n.BlockLength)
+	read(f, o, &n.NavigationTime)
+	read(f, o, &n.SSPLongitude)
+	read(f, o, &n.SSPLatitude)
+	read(f, o, &n.DistanceFromEarthToSatellite)
+	read(f, o, &n.NadirLongitude)
+	read(f, o, &n.NadirLatitude)
+	read(f, o, &n.SunPosition.X)
+	read(f, o, &n.SunPosition.Y)
+	read(f, o, &n.SunPosition.Z)
+	read(f, o, &n.MoonPosition.X)
+	read(f, o, &n.MoonPosition.Y)
+	read(f, o, &n.MoonPosition.Z)
+	read(f, o, &n.Spare)
+
+	return &HMFile{BasicInfo: i, DataInfo: d, ProjectionInfo: p, NavigationInfo: n}, nil
 }
 
 func main() {
@@ -170,4 +210,12 @@ func main() {
 // read util function that reads and ignore error
 func read(f io.Reader, o binary.ByteOrder, dst any) {
 	_ = binary.Read(f, o, dst)
+}
+
+func round(num float64) int {
+	return int(num + math.Copysign(0.5, num))
+}
+func toFixed(num float64, precision int) float64 {
+	output := math.Pow(10, float64(precision))
+	return float64(round(num*output)) / output
 }

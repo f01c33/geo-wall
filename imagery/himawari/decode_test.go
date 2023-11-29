@@ -67,6 +67,27 @@ func TestDecode(t *testing.T) {
 			ResamplingSize:          4,
 			Spare:                   [40]C{},
 		},
+		NavigationInfo: NavigationInformationBlock{
+			BlockNumber:                  4,
+			BlockLength:                  139,
+			NavigationTime:               60248.56964875857,
+			SSPLongitude:                 140.7714266029078,
+			SSPLatitude:                  0.0005093745779982038,
+			DistanceFromEarthToSatellite: 42167.43974992831,
+			NadirLongitude:               140.70940097119754,
+			NadirLatitude:                -0.18059667277279684,
+			SunPosition: Position{
+				X: -117768009.68104868,
+				Y: -83032296.6181277,
+				Z: -35994351.16214465,
+			},
+			MoonPosition: Position{
+				X: 115780.14199159983,
+				Y: 323216.6892999755,
+				Z: 168523.58232513716,
+			},
+			Spare: [40]C{},
+		},
 	}, hw)
 	if diff != "" {
 		t.Errorf("received and expected not equal: %s", diff)
