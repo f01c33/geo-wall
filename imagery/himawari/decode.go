@@ -18,9 +18,18 @@ const (
 	BigEndian    = 1
 )
 
+type HMFile struct {
+	basicInfo BasicInformation
+	dataInfo  DataInformationBlock
+}
+
+type Header struct {
+	BlockNumber I1
+	BlockLength I2
+}
+
 type BasicInformation struct {
-	BlockNumber          I1
-	BlockLength          I2
+	Header
 	TotalHeaderBlocks    I2
 	ByteOrder            I1
 	Satellite            [16]C
@@ -42,12 +51,22 @@ type BasicInformation struct {
 	Spare                [40]C
 }
 
+type DataInformationBlock struct {
+	Header
+	NumberOfBitsPerPixel I2
+	NumberOfColumns      I2
+	NumberOfLines        I2
+	CompressionFlag      I1
+	Spare                [40]C
+}
+
 func main() {
 	f, err := os.Open("sample-data/HS_H09_20231031_1340_B02_FLDK_R10_S0110.DAT")
 	if err != nil {
 		panic(err)
 	}
 
+	// Decode basic info
 	// Detect byte order. I1+I2+I2=5
 	_, err = f.Seek(5, 0)
 	if err != nil {
@@ -65,7 +84,6 @@ func main() {
 		o = binary.BigEndian
 	}
 	_, _ = f.Seek(0, 0)
-
 	read(f, o, &i.BlockNumber)
 	read(f, o, &i.BlockLength)
 	read(f, o, &i.TotalHeaderBlocks)
@@ -88,7 +106,19 @@ func main() {
 	read(f, o, &i.FileName)
 	read(f, o, &i.Spare)
 
-	fmt.Printf("%+v\n", i)
+	// Decode data information block
+	d := DataInformationBlock{}
+	read(f, o, &d.BlockNumber)
+	read(f, o, &d.BlockLength)
+	read(f, o, &d.NumberOfBitsPerPixel)
+	read(f, o, &d.NumberOfColumns)
+	read(f, o, &d.NumberOfLines)
+	read(f, o, &d.CompressionFlag)
+	read(f, o, &d.Spare)
+
+	h := HMFile{basicInfo: i, dataInfo: d}
+
+	fmt.Printf("%+v\n", h)
 }
 
 // read util function that reads and ignore error
