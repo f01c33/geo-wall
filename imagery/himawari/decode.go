@@ -33,10 +33,17 @@ type BasicInformation struct {
 	FileCreationTime     R8
 	TotalHeaderLength    I4
 	TotalDataLength      I4
+	QualityFlag1         I1
+	QualityFlag2         I1
+	QualityFlag3         I1
+	QualityFlag4         I1
+	FileFormatVersion    [32]C
+	FileName             [128]C
+	Spare                [40]C
 }
 
 func main() {
-	f, err := os.Open("HS_H09_20231031_1340_B02_FLDK_R10_S0110.DAT")
+	f, err := os.Open("sample-data/HS_H09_20231031_1340_B02_FLDK_R10_S0110.DAT")
 	if err != nil {
 		panic(err)
 	}
@@ -73,6 +80,13 @@ func main() {
 	read(f, o, &i.FileCreationTime)
 	read(f, o, &i.TotalHeaderLength)
 	read(f, o, &i.TotalDataLength)
+	read(f, o, &i.QualityFlag1)
+	read(f, o, &i.QualityFlag2)
+	read(f, o, &i.QualityFlag3)
+	read(f, o, &i.QualityFlag4)
+	read(f, o, &i.FileFormatVersion)
+	read(f, o, &i.FileName)
+	read(f, o, &i.Spare)
 
 	fmt.Printf("%+v\n", i)
 }
