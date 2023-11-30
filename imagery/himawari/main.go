@@ -20,9 +20,17 @@ func main() {
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("P3\n%d %d\n255\n", h.DataInfo.NumberOfColumns, h.DataInfo.NumberOfLines))
 	fmt.Fprintf(os.Stderr, "%+v\n", h.DataInfo)
-	brightness := 40.
+	fmt.Fprintf(os.Stderr, "%+v\n", h.CalibrationInfo)
+	fmt.Fprintf(os.Stderr, "%+v\n", h.InterCalibrationInfo)
+	errCount := h.CalibrationInfo.CountValueOfErrorPixels
+	outside := h.CalibrationInfo.CountValueOfPixelsOutsideScanArea
+	brightness := 1.
 	for i, p := range h.ImageData {
-		coef := float64(p) / (math.Pow(2., float64(h.DataInfo.NumberOfBitsPerPixel)) - 2.)
+		// Do err and outside scan area logic
+		coef := float64(p) / (math.Pow(2., float64(h.CalibrationInfo.ValidNumberOfBitsPerPixel)) - 2.)
+		if p == errCount || p == outside {
+			coef = 0
+		}
 		pc := pixel(coef, brightness)
 		buf.WriteString(fmt.Sprintf("%d %d %d", pc, pc, pc))
 		if i != len(h.ImageData)-1 {
