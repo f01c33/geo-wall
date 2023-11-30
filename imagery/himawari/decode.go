@@ -2,9 +2,7 @@ package main
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io"
-	"os"
 )
 
 type C byte
@@ -229,7 +227,6 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	i := BasicInformation{}
 	read(f, binary.BigEndian, &i.ByteOrder)
 	var o binary.ByteOrder
-	fmt.Println(i.ByteOrder)
 	if i.ByteOrder == LittleEndian {
 		o = binary.LittleEndian
 	} else {
@@ -422,23 +419,10 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 		SpareInfo:                sp,
 	}
 
-	h.ImageData = make([]I2, h.DataInfo.NumberOfColumns*h.DataInfo.NumberOfLines)
+	h.ImageData = make([]I2, int(h.DataInfo.NumberOfColumns)*int(h.DataInfo.NumberOfLines))
 	read(f, o, &h.ImageData)
 
 	return h, nil
-}
-
-func main() {
-	f, err := os.Open("sample-data/HS_H09_20231031_1340_B02_FLDK_R10_S0110.DAT")
-	if err != nil {
-		panic(err)
-	}
-	h, err := DecodeFile(f)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("%+v\n", h)
 }
 
 // read util function that reads and ignore error

@@ -195,7 +195,7 @@ func TestDecode(t *testing.T) {
 	if diff != "" {
 		t.Errorf("received and expected not equal: %s", diff)
 	}
-	if len(hw.ImageData) != int(hw.DataInfo.NumberOfLines*hw.DataInfo.NumberOfColumns) {
+	if len(hw.ImageData) != 11000*1100 {
 		t.Errorf("invalid image length")
 	}
 	if hw.ImageData[len(hw.ImageData)-1] == 0 {
