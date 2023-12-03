@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 )
@@ -216,15 +217,17 @@ type SpareInformationBlock struct {
 	Spare       [256]C
 }
 
-// TODO: use only io.Reader without seek
-func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
+func DecodeFile(f io.Reader) (*HMFile, error) {
 	// Decode basic info
-	// Detect byte order. I1+I2+I2=5
-	_, err := f.Seek(5, 0)
+	// I1+I2+I2=5
+	basicInfo := make([]byte, 5)
+	_, err := f.Read(basicInfo)
 	if err != nil {
 		return nil, err
 	}
+	basicBuffer := bytes.NewBuffer(basicInfo)
 	i := BasicInformation{}
+	// Detect byte order
 	read(f, binary.BigEndian, &i.ByteOrder)
 	var o binary.ByteOrder
 	if i.ByteOrder == LittleEndian {
@@ -232,11 +235,12 @@ func DecodeFile(f io.ReadSeeker) (*HMFile, error) {
 	} else {
 		o = binary.BigEndian
 	}
-	_, _ = f.Seek(0, 0)
-	read(f, o, &i.BlockNumber)
-	read(f, o, &i.BlockLength)
-	read(f, o, &i.TotalHeaderBlocks)
-	read(f, o, &i.ByteOrder)
+	// Read existing buffer
+	read(basicBuffer, o, &i.BlockNumber)
+	read(basicBuffer, o, &i.BlockLength)
+	read(basicBuffer, o, &i.TotalHeaderBlocks)
+
+	// Skip Byte order because already read and continue normal decoding
 	read(f, o, &i.Satellite)
 	read(f, o, &i.ProcessingCenter)
 	read(f, o, &i.ObservationArea)

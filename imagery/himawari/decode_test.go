@@ -1,18 +1,19 @@
 package main
 
 import (
+	"compress/bzip2"
 	"github.com/google/go-cmp/cmp"
 	"os"
 	"testing"
 )
 
 func TestDecode(t *testing.T) {
-	f, err := os.Open("sample-data/HS_H09_20231031_1340_B02_FLDK_R10_S0110.DAT")
+	f, err := os.Open("test-data/HS_H09_20231031_1340_B02_FLDK_R10_S0110.DAT.bz2")
 	if err != nil {
 		t.Error(err)
 	}
 
-	hw, err := DecodeFile(f)
+	hw, err := DecodeFile(bzip2.NewReader(f))
 	if err != nil {
 		t.Error(err)
 	}
