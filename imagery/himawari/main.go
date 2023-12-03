@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/png"
+	"image/jpeg"
 	"math"
 	"os"
 )
@@ -56,8 +56,8 @@ func main() {
 			}
 		}
 	}
-	fimg, _ := os.Create("image.png")
-	err := png.Encode(fimg, img)
+	fimg, _ := os.Create("image.jpg")
+	err := jpeg.Encode(fimg, img, &jpeg.Options{Quality: 90})
 	if err != nil {
 		panic(err)
 	}
