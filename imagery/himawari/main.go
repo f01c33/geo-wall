@@ -1,8 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"math"
 	"os"
 )
@@ -10,8 +12,10 @@ import (
 func main() {
 	filePattern := "sample-data/HS_H09_20231130_0030_B03_FLDK_R05_S%02d10.DAT"
 	sectionCount := 10
-	for i := 1; i <= sectionCount; i++ {
-		f, err := os.Open(fmt.Sprintf(filePattern, i))
+	var img *image.RGBA
+	for i := 0; i < sectionCount; i++ {
+		// Decode data
+		f, err := os.Open(fmt.Sprintf(filePattern, i+1))
 		if err != nil {
 			panic(err)
 		}
@@ -20,37 +24,49 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-
-		var buf bytes.Buffer
-		if i == 1 {
-			buf.WriteString(fmt.Sprintf("P3\n%d %d\n255\n", h.DataInfo.NumberOfColumns, int(h.DataInfo.NumberOfLines)*sectionCount))
+		// Initialize image if first loop
+		if i == 0 {
+			img = image.NewRGBA(image.Rect(0, 0, int(h.DataInfo.NumberOfColumns), int(h.DataInfo.NumberOfLines)*sectionCount))
 		}
-		fmt.Fprintf(os.Stderr, "%+v\n", h.DataInfo)
-		fmt.Fprintf(os.Stderr, "%+v\n", h.CalibrationInfo)
-		fmt.Fprintf(os.Stderr, "%+v\n", h.InterCalibrationInfo)
 		errCount := h.CalibrationInfo.CountValueOfErrorPixels
 		outside := h.CalibrationInfo.CountValueOfPixelsOutsideScanArea
 		brightness := 1.
-		for n, p := range h.ImageData {
-			// Do err and outside scan area logic
-			coef := float64(p) / (math.Pow(2., float64(h.CalibrationInfo.ValidNumberOfBitsPerPixel)) - 2.)
-			if p == errCount || p == outside {
-				coef = 0
-			}
-			pc := pixel(coef, brightness)
-			buf.WriteString(fmt.Sprintf("%d %d %d", pc, pc, pc))
-			if n != len(h.ImageData)-1 {
-				buf.WriteString(" ")
-			}
-			if n != 0 && n%int(h.DataInfo.NumberOfColumns) == 0 {
-				buf.WriteString("\n")
+		width := int(h.DataInfo.NumberOfColumns)
+		height := int(h.DataInfo.NumberOfLines)
+		startX := 0
+		startY := height * i
+		endX := width
+		endY := startY + height
+		n := 0
+		fmt.Printf("Decoding %dx%d from x %d-%d to y %d-%d\n", width, height, startX, endX, startY, endY)
+		for y := startY; y < endY; y++ {
+			for x := startX; x < endX; x++ {
+				// Do err and outside scan area logic
+				rawData := h.ImageData[n]
+				n++
+				if rawData == errCount || rawData == outside {
+					img.Set(x, y, color.Black)
+					continue
+				}
+				// Get a number between 0 and 1 from max number of pixels
+				// different bands has different number of pixels, e.g., band 03 has 11
+				coef := float64(rawData) / (math.Pow(2., float64(h.CalibrationInfo.ValidNumberOfBitsPerPixel)) - 2.)
+				pc := pixel(coef, brightness)
+				img.Set(x, y, color.RGBA{R: uint8(pc), G: uint8(pc), B: uint8(pc), A: 255})
 			}
 		}
-		_, _ = buf.WriteTo(os.Stdout)
 	}
-
+	fimg, _ := os.Create("image.png")
+	err := png.Encode(fimg, img)
+	if err != nil {
+		panic(err)
+	}
+	if err = fimg.Close(); err != nil {
+		panic(err)
+	}
 }
 
+// pixel Returns 255*coef clamping at coef, brightness adjusted
 func pixel(coef, brig float64) int {
 	return int(math.Min(coef*255*brig, 255))
 }
