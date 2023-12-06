@@ -15,9 +15,9 @@ func main() {
 	filePattern := "sample-data/%s_S%02d10.DAT.bz2"
 	sectionCount := 10
 	var img *image.RGBA
-	for i := 0; i < sectionCount; i++ {
+	for section := 0; section < sectionCount; section++ {
 		// Decode data
-		f, err := os.Open(fmt.Sprintf(filePattern, src, i+1))
+		f, err := os.Open(fmt.Sprintf(filePattern, src, section+1))
 		if err != nil {
 			panic(err)
 		}
@@ -26,26 +26,32 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		// Initialize image if first loop
-		if i == 0 {
-			img = image.NewRGBA(image.Rect(0, 0, int(h.DataInfo.NumberOfColumns), int(h.DataInfo.NumberOfLines)*sectionCount))
-		}
 		errCount := h.CalibrationInfo.CountValueOfErrorPixels
 		outside := h.CalibrationInfo.CountValueOfPixelsOutsideScanArea
 		brightness := 1.
 		width := int(h.DataInfo.NumberOfColumns)
 		height := int(h.DataInfo.NumberOfLines)
 		startX := 0
-		startY := height * i
 		endX := width
-		endY := startY + height
-		n := 0
+
+		scale := 0.5
+		scaledWidth := scale * float64(width)
+		scaledHeight := scale * float64(height)
+		//pace := float64(len(h.ImageData)) / (scaledWidth*scaledHeight + 1.)
+		startY := int(scaledHeight) * section
+		endY := startY + int(scaledHeight)
+		// Initialize image if first loop
+		if section == 0 {
+			img = image.NewRGBA(image.Rect(0, 0, int(scaledWidth), int(scaledHeight)*sectionCount))
+		}
+		n := 0.0
 		fmt.Printf("Decoding %dx%d from x %d-%d to y %d-%d\n", width, height, startX, endX, startY, endY)
+		i := 0
 		for y := startY; y < endY; y++ {
-			for x := startX; x < endX; x++ {
+			for x := 0; x < int(scaledWidth); x++ {
 				// Do err and outside scan area logic
-				rawData := h.ImageData[n]
-				n++
+				rawData := h.ImageData[int(n)]
+				n += float64(width) / (scaledWidth + 1.0)
 				if rawData == errCount || rawData == outside {
 					img.Set(x, y, color.Black)
 					continue
@@ -55,6 +61,11 @@ func main() {
 				coef := float64(rawData) / (math.Pow(2., float64(h.CalibrationInfo.ValidNumberOfBitsPerPixel)) - 2.)
 				pc := pixel(coef, brightness)
 				img.Set(x, y, color.RGBA{R: uint8(pc), G: uint8(pc), B: uint8(pc), A: 255})
+			}
+			i++
+			n = float64(width) * (float64(height) / scaledHeight) * float64(i)
+			if n >= float64(len(h.ImageData)) {
+				break
 			}
 		}
 	}
