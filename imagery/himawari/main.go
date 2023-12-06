@@ -32,7 +32,8 @@ func main() {
 		brightness := 1.
 		width := int(h.DataInfo.NumberOfColumns)
 		height := int(h.DataInfo.NumberOfLines)
-		scale := 0.1
+		decimate := 4
+		scale := 1.0 / float64(decimate)
 		scaledWidth := scale * float64(width)
 		scaledHeight := scale * float64(height)
 		// Start and End Y are the relative positions for the final image based in a section
