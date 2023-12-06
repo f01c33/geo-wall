@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/bzip2"
 	"fmt"
 	"image"
 	"image/color"
@@ -10,16 +11,17 @@ import (
 )
 
 func main() {
-	filePattern := "sample-data/HS_H09_20231130_0030_B03_FLDK_R05_S%02d10.DAT"
+	src := "HS_H09_20231130_0030_B04_FLDK_R10"
+	filePattern := "sample-data/%s_S%02d10.DAT.bz2"
 	sectionCount := 10
 	var img *image.RGBA
 	for i := 0; i < sectionCount; i++ {
 		// Decode data
-		f, err := os.Open(fmt.Sprintf(filePattern, i+1))
+		f, err := os.Open(fmt.Sprintf(filePattern, src, i+1))
 		if err != nil {
 			panic(err)
 		}
-		h, err := DecodeFile(f)
+		h, err := DecodeFile(bzip2.NewReader(f))
 		_ = f.Close()
 		if err != nil {
 			panic(err)
