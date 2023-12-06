@@ -26,32 +26,34 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		// Configure variables for the decoding
 		errCount := h.CalibrationInfo.CountValueOfErrorPixels
 		outside := h.CalibrationInfo.CountValueOfPixelsOutsideScanArea
 		brightness := 1.
 		width := int(h.DataInfo.NumberOfColumns)
 		height := int(h.DataInfo.NumberOfLines)
-		startX := 0
-		endX := width
-
-		scale := 0.5
+		scale := 0.1
 		scaledWidth := scale * float64(width)
 		scaledHeight := scale * float64(height)
-		//pace := float64(len(h.ImageData)) / (scaledWidth*scaledHeight + 1.)
+		// Start and End Y are the relative positions for the final image based in a section
 		startY := int(scaledHeight) * section
 		endY := startY + int(scaledHeight)
 		// Initialize image if first loop
 		if section == 0 {
 			img = image.NewRGBA(image.Rect(0, 0, int(scaledWidth), int(scaledHeight)*sectionCount))
 		}
+		// The amount of bytes to ignore by scaled width
+		widthJump := float64(width) / (scaledWidth + 1.0)
+		// The amount of bytes to ignore by scaled height
+		heightJump := float64(width) * (float64(height) / scaledHeight)
 		n := 0.0
-		fmt.Printf("Decoding %dx%d from x %d-%d to y %d-%d\n", width, height, startX, endX, startY, endY)
-		i := 0
-		for y := startY; y < endY; y++ {
+		fmt.Printf("Decoding %dx%d from y %d-%d\n", width, height, startY, endY)
+		for y, l := startY, 1.0; y < endY; y, l = y+1, l+1 {
 			for x := 0; x < int(scaledWidth); x++ {
 				// Do err and outside scan area logic
 				rawData := h.ImageData[int(n)]
-				n += float64(width) / (scaledWidth + 1.0)
+				// Ignore scaled width bytes
+				n += widthJump
 				if rawData == errCount || rawData == outside {
 					img.Set(x, y, color.Black)
 					continue
@@ -62,11 +64,8 @@ func main() {
 				pc := pixel(coef, brightness)
 				img.Set(x, y, color.RGBA{R: uint8(pc), G: uint8(pc), B: uint8(pc), A: 255})
 			}
-			i++
-			n = float64(width) * (float64(height) / scaledHeight) * float64(i)
-			if n >= float64(len(h.ImageData)) {
-				break
-			}
+			// Ignore scaled height bytes
+			n = heightJump * l
 		}
 	}
 	fimg, _ := os.Create("image.jpg")
