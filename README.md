@@ -1,0 +1,4 @@
+- clone the repository
+- install vips
+- go build .
+- run the thing, every 30min you get a new wallpaper
