@@ -8,6 +8,7 @@ import (
 	"github.com/f01c33/geo-wall/imagery"
 	"github.com/reujab/wallpaper"
 	"log"
+	"math/rand"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -21,12 +22,26 @@ func main() {
 
 	screenWidth := 4096
 	screenHeight := 2160
+	err := setGoesWallpaper(screenWidth, screenHeight)
+	if err != nil {
+		log.Fatalf("Failed to set GOES wallpaper: %v", err)
+	}
 	for range time.NewTicker(time.Minute * 30).C {
 		err := setGoesWallpaper(screenWidth, screenHeight)
 		if err != nil {
 			log.Fatalf("Failed to set GOES wallpaper: %v", err)
 		}
 	}
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func randSeq(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
 
 // setGoesWallpaper downloads the latest GOES image, processes, resizes, and sets it as wallpaper.
@@ -82,7 +97,7 @@ func setGoesWallpaper(targetWidth, targetHeight int) error {
 	log.Printf("Image post-processed and saved to %s", postprocessedImagePath)
 
 	// 4. Resize the image (replicating logic from handlers.resizeImage)
-	resizedImagePath := filepath.Join(exPath, fmt.Sprintf("goes_resized_%dx%d.jpg", targetWidth, targetHeight))
+	resizedImagePath := filepath.Join(exPath, fmt.Sprintf("goes_resized_%dx%d_%s.jpg", targetWidth, targetHeight, randSeq(10)))
 
 	log.Printf("Resizing image to %dx%d...", targetWidth, targetHeight)
 	vipsImg, err := vips.NewImageFromFile(postprocessedImagePath)
@@ -127,6 +142,7 @@ func setGoesWallpaper(targetWidth, targetHeight int) error {
 		return fmt.Errorf("failed to write resized image to disk: %w", err)
 	}
 	log.Printf("Image resized and saved to %s", resizedImagePath)
+	defer os.Remove(resizedImagePath) // Clean up
 
 	// 5. Set as wallpaper
 	log.Println("Setting wallpaper...")
@@ -139,6 +155,7 @@ func setGoesWallpaper(targetWidth, targetHeight int) error {
 		return fmt.Errorf("failed to set wallpaper from file: %w", err)
 	}
 	log.Println("Wallpaper set successfully!")
+	<-time.After(time.Second * 5)
 	return nil
 }
 
