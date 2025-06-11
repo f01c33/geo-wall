@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/f01c33/geo-wall/imagery"
+	"github.com/fstanis/screenresolution"
 	"github.com/reujab/wallpaper"
 	"log"
 	"math/rand"
 	"os"
-	"os/user"
 	"path/filepath"
 	"time"
 )
@@ -20,14 +20,14 @@ func main() {
 	vips.Startup(nil)
 	defer vips.Shutdown()
 
-	screenWidth := 4096
-	screenHeight := 2160
-	err := setGoesWallpaper(screenWidth, screenHeight)
+	resolution := screenresolution.GetPrimary()
+	err := setGoesWallpaper(resolution.Width, resolution.Height)
 	if err != nil {
 		log.Fatalf("Failed to set GOES wallpaper: %v", err)
 	}
 	for range time.NewTicker(time.Minute * 30).C {
-		err := setGoesWallpaper(screenWidth, screenHeight)
+		resolution := screenresolution.GetPrimary()
+		err := setGoesWallpaper(resolution.Width, resolution.Height)
 		if err != nil {
 			log.Fatalf("Failed to set GOES wallpaper: %v", err)
 		}
@@ -157,13 +157,4 @@ func setGoesWallpaper(targetWidth, targetHeight int) error {
 	log.Println("Wallpaper set successfully!")
 	<-time.After(time.Second * 5)
 	return nil
-}
-
-func getCacheDir() (string, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(usr.HomeDir, "Library", "Caches"), nil
 }
