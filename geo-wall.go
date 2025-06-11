@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/f01c33/geo-wall/imagery"
-	"github.com/fstanis/screenresolution"
+	"github.com/kbinani/screenshot"
 	"github.com/reujab/wallpaper"
 	"log"
 	"math/rand"
@@ -19,15 +19,14 @@ func main() {
 	// Initialize libvips
 	vips.Startup(nil)
 	defer vips.Shutdown()
-
-	resolution := screenresolution.GetPrimary()
-	err := setGoesWallpaper(resolution.Width, resolution.Height)
+	bounds := screenshot.GetDisplayBounds(0)
+	err := setGoesWallpaper(bounds.Dx(), bounds.Dy())
 	if err != nil {
 		log.Fatalf("Failed to set GOES wallpaper: %v", err)
 	}
 	for range time.NewTicker(time.Minute * 30).C {
-		resolution := screenresolution.GetPrimary()
-		err := setGoesWallpaper(resolution.Width, resolution.Height)
+		bounds = screenshot.GetDisplayBounds(0)
+		err = setGoesWallpaper(bounds.Dx(), bounds.Dy())
 		if err != nil {
 			log.Fatalf("Failed to set GOES wallpaper: %v", err)
 		}
